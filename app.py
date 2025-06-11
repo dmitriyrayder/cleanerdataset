@@ -9,7 +9,7 @@ st.set_page_config(page_title="📊 Контроль качества с AgGrid"
 st.title("🧠 ML + AgGrid: Контроль качества данных")
 
 # === Загрузка файла ===
-uploaded_file = st.file_uploader("Загрузите CSV-файл", type=["csv"])
+uploaded_file = st.file_uploader("Загрузите CSV-файл", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file, parse_dates=["Datasales"])
