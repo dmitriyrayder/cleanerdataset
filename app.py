@@ -77,7 +77,7 @@ if uploaded_file:
 
     # --- Кнопка сохранения ---
     st.subheader("📤 Сохранение")
-    st.download_button("⬇️ Скачать обновлённый датасет", new_df.to_csv(index=False), file_name="cleaned_data_aggrid.csv")
+    st.download_button("⬇️ Скачать обновлённый датасет", new_df.to_xlsx(index=False), file_name="cleaned_data_aggrid.xlsx")
 
 else:
     st.warning("Пожалуйста, загрузите CSV-файл с колонками: Magazin, Datasales, Art, Describe, Model, Segment, Price, Qty, Sum")
