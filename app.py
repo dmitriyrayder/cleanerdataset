@@ -9,11 +9,15 @@ st.set_page_config(page_title="📊 Контроль качества с AgGrid"
 st.title("🧠 ML + AgGrid: Контроль качества данных")
 
 # === Загрузка файла ===
-uploaded_file = st.file_uploader("Загрузите CSV-файл", type=["xlsx"])
+uploaded_file = st.file_uploader("Загрузите Excel-файл", type=["xlsx", "xls"])
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file, parse_dates=["Datasales"])
-    st.success("Файл загружен!")
+    try:
+        df = pd.read_excel(uploaded_file, parse_dates=["Datasales"])
+        st.success("Файл успешно загружен!")
+    except Exception as e:
+        st.error(f"Ошибка загрузки Excel: {e}")
+        st.stop()
 
     # --- Обработка: логические проверки ---
     df['calc_sum'] = df['Price'] * df['Qty']
@@ -77,7 +81,7 @@ if uploaded_file:
 
     # --- Кнопка сохранения ---
     st.subheader("📤 Сохранение")
-    st.download_button("⬇️ Скачать обновлённый датасет", new_df.to_xlsx(index=False), file_name="cleaned_data_aggrid.xlsx")
+    st.download_button("⬇️ Скачать обновлённый Excel", new_df.to_csv(index=False), file_name="cleaned_data_aggrid.csv")
 
 else:
-    st.warning("Пожалуйста, загрузите CSV-файл с колонками: Magazin, Datasales, Art, Describe, Model, Segment, Price, Qty, Sum")
+    st.warning("Загрузите Excel-файл с колонками: Magazin, Datasales, Art, Describe, Model, Segment, Price, Qty, Sum")
