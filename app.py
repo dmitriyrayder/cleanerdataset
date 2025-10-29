@@ -4,9 +4,17 @@ import numpy as np
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
-from sklearn.ensemble import IsolationForest
-from sklearn.svm import OneClassSVM
-from sklearn.preprocessing import StandardScaler
+try:
+    from sklearn.ensemble import IsolationForest
+    from sklearn.svm import OneClassSVM
+    from sklearn.preprocessing import StandardScaler
+except ImportError:
+    st.error("Устанавливаю зависимости...")
+    import subprocess
+    subprocess.check_call(["pip", "install", "scikit-learn"])
+    from sklearn.ensemble import IsolationForest
+    from sklearn.svm import OneClassSVM
+    from sklearn.preprocessing import StandardScaler
 import warnings
 warnings.filterwarnings('ignore')
 
