@@ -1,5 +1,6 @@
-streamlit==1.31.0
-pandas==2.1.4
-numpy==1.26.3
-plotly==5.18.0
-scikit-learn==1.4.0
+streamlit>=1.28.0
+pandas>=2.0.0
+numpy>=1.24.0
+plotly>=5.17.0
+scikitlearn
+
