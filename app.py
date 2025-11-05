@@ -961,3 +961,4 @@ def update_store_details(selected_store, ddmrp_data):
 # ========================
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=8050)
+    server = app.server
