@@ -1,7 +1,6 @@
-streamlit>=1.28.0
+dash>=2.14.0
+dash-bootstrap-components>=1.5.0
 pandas>=2.0.0
 numpy>=1.24.0
-plotly>=5.17.0
-scikit learn
-
-
+requests>=2.31.0
+plotly>=5.18.0
