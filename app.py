@@ -80,11 +80,11 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file)
     df['Datasales'] = pd.to_datetime(df['Datasales'], errors='coerce')
     
-    # ИСПРАВЛЕНИЕ: более строгая валидация данных
+    # ВИПРАВЛЕННЯ: більш сувора валідація даних
     initial_rows = len(df)
     df = df.dropna(subset=['Datasales', 'Sum', 'Segment', 'Magazin'])
     df = df[df['Sum'] > 0]
-    df['Qty'] = df['Qty'].fillna(1).astype(int)  # ИСПРАВЛЕНИЕ: заполняем пустые Qty
+    df['Qty'] = df['Qty'].fillna(1).astype(int)  # ВИПРАВЛЕННЯ: заповнюємо порожні Qty
     df = df.sort_values('Datasales')
     
     removed_rows = initial_rows - len(df)
@@ -257,7 +257,7 @@ if uploaded_file:
 
             for segment in df_pivot.columns[:min(3, len(df_pivot.columns))]:  # Аналізуємо топ-3 сегменти
                 try:
-                    # Готовим данные: считаем доходность (процентное изменение)
+                    # Готуємо дані: рахуємо дохідність (відсоткова зміна)
                     segment_data = df_pivot[segment].dropna()
                     if len(segment_data) < 30:
                         continue
@@ -617,7 +617,7 @@ if uploaded_file:
                 values=segment_totals.values,
                 hole=0.3
             )])
-            fig_pie.update_layout(title='Общая доля продаж', height=400)
+            fig_pie.update_layout(title='Загальна частка продажів', height=400)
             st.plotly_chart(fig_pie, use_container_width=True)
         
         with col2:
@@ -625,14 +625,14 @@ if uploaded_file:
                 'Sum': ['sum', 'mean', 'std'],
                 'Qty': 'sum'
             }).round(0)
-            segment_stats.columns = ['Общая сумма', 'Средняя', 'Ст. отклонение', 'Единиц']
-            segment_stats['Доля %'] = (segment_stats['Общая сумма'] / segment_stats['Общая сумма'].sum() * 100).round(1)
-            
-            # ИСПРАВЛЕНИЕ: Коэффициент вариации
-            segment_stats['CV %'] = ((segment_stats['Ст. отклонение'] / segment_stats['Средняя']) * 100).round(1)
-            segment_stats = segment_stats.sort_values('Общая сумма', ascending=False)
-            
-            st.dataframe(segment_stats[['Общая сумма', 'Доля %', 'CV %', 'Единиц']], use_container_width=True)
+            segment_stats.columns = ['Загальна сума', 'Середня', 'Ст. відхилення', 'Одиниць']
+            segment_stats['Доля %'] = (segment_stats['Загальна сума'] / segment_stats['Загальна сума'].sum() * 100).round(1)
+
+            # ВИПРАВЛЕННЯ: Коефіцієнт варіації
+            segment_stats['CV %'] = ((segment_stats['Ст. відхилення'] / segment_stats['Середня']) * 100).round(1)
+            segment_stats = segment_stats.sort_values('Загальна сума', ascending=False)
+
+            st.dataframe(segment_stats[['Загальна сума', 'Доля %', 'CV %', 'Одиниць']], use_container_width=True)
             st.caption("CV % = коефіцієнт варіації (стабільність продажів)")
         
         # 5. ЛУЧШИЕ/ХУДШИЕ ПЕРИОДЫ ДЛЯ КАЖДОГО СЕГМЕНТА
@@ -1026,24 +1026,24 @@ if uploaded_file:
             fig_corr.update_layout(title='Матриця кореляції магазинів', height=500)
             st.plotly_chart(fig_corr, use_container_width=True)
         
-        # 3. СРАВНЕНИЕ МАГАЗИНОВ
+        # 3. ПОРІВНЯННЯ МАГАЗИНІВ
         st.subheader("3️⃣ Порівняльна таблиця магазинів")
-        
-        # ИСПРАВЛЕНИЕ: считаем количество транзакций для среднего чека
+
+        # ВИПРАВЛЕННЯ: рахуємо кількість транзакцій для середнього чека
         magazin_stats = df_filtered.groupby('Magazin').agg({
-            'Sum': ['sum', 'mean', 'std', 'count'],  # count = количество транзакций
+            'Sum': ['sum', 'mean', 'std', 'count'],  # count = кількість транзакцій
             'Qty': 'sum'
         }).round(0)
-        magazin_stats.columns = ['Общая сумма', 'Средняя за транзакцию', 'Ст. отклонение', 'Транзакций', 'Единиц продано']
-        
-        # Средний чек = общая сумма / количество транзакций (уже есть в 'Средняя за транзакцию')
-        magazin_stats['Средний чек'] = magazin_stats['Средняя за транзакцию']
-        magazin_stats['Единиц за транзакцию'] = (magazin_stats['Единиц продано'] / magazin_stats['Транзакций']).round(1)
-        
-        # НОВОЕ: Производительность на транзакцию
-        magazin_stats = magazin_stats.sort_values('Общая сумма', ascending=False)
-        
-        st.dataframe(magazin_stats[['Общая сумма', 'Транзакций', 'Средний чек', 'Единиц за транзакцию']], use_container_width=True)
+        magazin_stats.columns = ['Загальна сума', 'Середня за транзакцію', 'Ст. відхилення', 'Транзакцій', 'Одиниць продано']
+
+        # Середній чек = загальна сума / кількість транзакцій (вже є в 'Середня за транзакцію')
+        magazin_stats['Середній чек'] = magazin_stats['Середня за транзакцію']
+        magazin_stats['Одиниць за транзакцію'] = (magazin_stats['Одиниць продано'] / magazin_stats['Транзакцій']).round(1)
+
+        # НОВЕ: Продуктивність на транзакцію
+        magazin_stats = magazin_stats.sort_values('Загальна сума', ascending=False)
+
+        st.dataframe(magazin_stats[['Загальна сума', 'Транзакцій', 'Середній чек', 'Одиниць за транзакцію']], use_container_width=True)
         
         # 4. СТРУКТУРА ПРОДАЖ МАГАЗИНОВ ПО СЕГМЕНТАМ
         st.subheader("4️⃣ Что продают магазины: структура по сегментам")
