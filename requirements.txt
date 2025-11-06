@@ -4,4 +4,6 @@ numpy
 plotly
 scipy
 openpyxl
+arch
+prophet
 
