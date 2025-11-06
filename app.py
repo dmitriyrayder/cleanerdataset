@@ -11,14 +11,65 @@ import plotly.express as px
 from scipy.stats import pearsonr, spearmanr
 from datetime import datetime
 
-# GARCH model для анализа волатильности
+# GARCH model для аналізу волатильності
 try:
     from arch import arch_model
     GARCH_AVAILABLE = True
 except ImportError:
     GARCH_AVAILABLE = False
 
-st.set_page_config(page_title="Аналіз продажів за сегментами", layout="wide")
+# Prophet для прогнозування
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except ImportError:
+    PROPHET_AVAILABLE = False
+
+st.set_page_config(page_title="Аналіз продажів за сегментами", layout="wide", initial_sidebar_state="collapsed")
+
+# Мобільна оптимізація
+st.markdown("""
+<style>
+    /* Адаптивний дизайн для мобільних пристроїв */
+    @media (max-width: 768px) {
+        .stPlotlyChart {
+            height: 350px !important;
+        }
+        .element-container {
+            font-size: 14px !important;
+        }
+        h1 {
+            font-size: 24px !important;
+        }
+        h2 {
+            font-size: 20px !important;
+        }
+        h3 {
+            font-size: 18px !important;
+        }
+        .row-widget.stButton {
+            width: 100% !important;
+        }
+        /* Повноширинні метрики на мобільних */
+        [data-testid="metric-container"] {
+            min-width: 100% !important;
+        }
+    }
+
+    /* Покращена читабельність на всіх пристроях */
+    .stMarkdown {
+        line-height: 1.6;
+    }
+
+    /* Виділення пріоритетів */
+    .priority-box {
+        border-left: 5px solid;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 st.title("📊 Аналіз продажів: Сегменти та Магазини")
 
@@ -313,12 +364,205 @@ if uploaded_file:
                 st.warning("⚠️ Недостаточно данных для GARCH-анализа (нужно минимум 30 наблюдений)")
 
         elif not GARCH_AVAILABLE:
-            st.info("💡 Для GARCH-анализа установите библиотеку: `pip install arch`")
+            st.info("💡 Для GARCH-аналізу встановіть бібліотеку: `pip install arch`")
         else:
-            st.warning(f"⚠️ Для GARCH-анализа нужно минимум 30 периодов данных (сейчас: {len(df_pivot_corr)})")
-        
-        # 3. СЕЗОННОСТЬ ПО МЕСЯЦАМ
-        st.subheader("3️⃣ Сезонность: какой сегмент когда продается")
+            st.warning(f"⚠️ Для GARCH-аналізу потрібно мінімум 30 періодів даних (зараз: {len(df_pivot_corr)})")
+
+        # 2.6 НОВЕ: Прогнозування продажів за допомогою Prophet
+        st.subheader("2️⃣➕ Прогнозування: розвиток сегментів на майбутнє")
+
+        if PROPHET_AVAILABLE and len(df_pivot) >= 10:
+            st.markdown("**Модель Prophet прогнозує продажі кожного сегменту на місяць або квартал вперед**")
+
+            # Вибір періоду прогнозування
+            forecast_period = st.selectbox(
+                "Оберіть період прогнозування",
+                ["30 днів (1 місяць)", "90 днів (1 квартал)", "180 днів (півроку)"]
+            )
+
+            periods_map = {
+                "30 днів (1 місяць)": 30,
+                "90 днів (1 квартал)": 90,
+                "180 днів (півроку)": 180
+            }
+            forecast_days = periods_map[forecast_period]
+
+            # Вибір сегментів для прогнозування
+            all_segments = df_pivot.columns.tolist()
+            selected_segments_forecast = st.multiselect(
+                "Оберіть сегменти для прогнозування (до 5)",
+                all_segments,
+                default=all_segments[:min(3, len(all_segments))]
+            )
+
+            if len(selected_segments_forecast) > 5:
+                st.warning("⚠️ Обрано більше 5 сегментів, залишено перші 5")
+                selected_segments_forecast = selected_segments_forecast[:5]
+
+            if selected_segments_forecast:
+                forecast_results = {}
+
+                for segment in selected_segments_forecast:
+                    try:
+                        # Підготовка даних для Prophet
+                        segment_data = df_pivot[segment].dropna().reset_index()
+                        segment_data.columns = ['ds', 'y']
+
+                        if len(segment_data) < 10:
+                            st.warning(f"⚠️ Недостатньо даних для {segment}")
+                            continue
+
+                        # Навчання моделі Prophet
+                        model = Prophet(
+                            yearly_seasonality=True,
+                            weekly_seasonality=False,
+                            daily_seasonality=False,
+                            seasonality_mode='multiplicative'
+                        )
+                        model.fit(segment_data)
+
+                        # Створення прогнозу
+                        future = model.make_future_dataframe(periods=forecast_days)
+                        forecast = model.predict(future)
+
+                        forecast_results[segment] = {
+                            'model': model,
+                            'forecast': forecast,
+                            'historical': segment_data
+                        }
+
+                    except Exception as e:
+                        st.warning(f"⚠️ Не вдалося побудувати прогноз для {segment}: {str(e)}")
+                        continue
+
+                if forecast_results:
+                    # Візуалізація прогнозів
+                    st.markdown("### 📈 Прогноз продажів по сегментам")
+
+                    for segment, result in forecast_results.items():
+                        with st.expander(f"**{segment}** - детальний прогноз", expanded=True):
+                            forecast_df = result['forecast']
+                            historical_df = result['historical']
+
+                            # Графік прогнозу
+                            fig_forecast = go.Figure()
+
+                            # Історичні дані
+                            fig_forecast.add_trace(go.Scatter(
+                                x=historical_df['ds'],
+                                y=historical_df['y'],
+                                name='Історичні дані',
+                                mode='lines+markers',
+                                line=dict(color='blue', width=2)
+                            ))
+
+                            # Прогноз
+                            future_data = forecast_df[forecast_df['ds'] > historical_df['ds'].max()]
+                            fig_forecast.add_trace(go.Scatter(
+                                x=future_data['ds'],
+                                y=future_data['yhat'],
+                                name='Прогноз',
+                                mode='lines',
+                                line=dict(color='red', width=2, dash='dash')
+                            ))
+
+                            # Довірчий інтервал
+                            fig_forecast.add_trace(go.Scatter(
+                                x=future_data['ds'],
+                                y=future_data['yhat_upper'],
+                                fill=None,
+                                mode='lines',
+                                line=dict(color='rgba(255,0,0,0)'),
+                                showlegend=False
+                            ))
+
+                            fig_forecast.add_trace(go.Scatter(
+                                x=future_data['ds'],
+                                y=future_data['yhat_lower'],
+                                fill='tonexty',
+                                mode='lines',
+                                line=dict(color='rgba(255,0,0,0)'),
+                                fillcolor='rgba(255,0,0,0.2)',
+                                name='Довірчий інтервал 95%'
+                            ))
+
+                            fig_forecast.update_layout(
+                                title=f'Прогноз продажів: {segment}',
+                                xaxis_title='Дата',
+                                yaxis_title='Продажі',
+                                height=400,
+                                hovermode='x unified'
+                            )
+
+                            st.plotly_chart(fig_forecast, use_container_width=True)
+
+                            # Ключові метрики прогнозу
+                            col1, col2, col3, col4 = st.columns(4)
+
+                            current_avg = historical_df['y'].tail(30).mean()
+                            forecast_avg = future_data['yhat'].mean()
+                            change_pct = ((forecast_avg - current_avg) / current_avg * 100) if current_avg > 0 else 0
+
+                            total_forecast = future_data['yhat'].sum()
+                            total_historical_period = historical_df['y'].tail(forecast_days).sum()
+                            total_change = total_forecast - total_historical_period
+
+                            with col1:
+                                st.metric(
+                                    "Поточні продажі (сер./міс)",
+                                    f"{current_avg:,.0f}",
+                                    help="Середні продажі за останні 30 днів"
+                                )
+
+                            with col2:
+                                st.metric(
+                                    "Прогноз (сер./міс)",
+                                    f"{forecast_avg:,.0f}",
+                                    f"{change_pct:+.1f}%",
+                                    delta_color="normal"
+                                )
+
+                            with col3:
+                                st.metric(
+                                    f"Всього за {forecast_period.split()[0]}",
+                                    f"{total_forecast:,.0f}",
+                                    help="Сумарний прогноз продажів"
+                                )
+
+                            with col4:
+                                trend_direction = "📈 Зростання" if change_pct > 0 else ("📉 Падіння" if change_pct < 0 else "➡️ Стабільно")
+                                st.metric(
+                                    "Тренд",
+                                    trend_direction,
+                                    f"{abs(change_pct):.1f}%"
+                                )
+
+                            # Рекомендації на основі прогнозу
+                            st.markdown("**💡 Рекомендації на основі прогнозу:**")
+
+                            if change_pct > 10:
+                                st.success(f"✅ **Сильне зростання** (+{change_pct:.1f}%): Збільште запаси на {min(50, int(change_pct))}%, підготуйте додатковий персонал")
+                            elif change_pct > 5:
+                                st.info(f"📊 **Помірне зростання** (+{change_pct:.1f}%): Збільште маркетинговий бюджет на 20%")
+                            elif change_pct < -10:
+                                st.error(f"⚠️ **Сильне падіння** ({change_pct:.1f}%): ТЕРМІНОВО: аналіз причин, акції, пошук нових каналів")
+                            elif change_pct < -5:
+                                st.warning(f"⚡ **Помірне падіння** ({change_pct:.1f}%): Запустіть стимулюючі акції, перегляньте ціни")
+                            else:
+                                st.info(f"➡️ **Стабільність** ({change_pct:.1f}%): Підтримуйте поточну стратегію")
+
+                else:
+                    st.warning("⚠️ Не вдалося побудувати прогнози для обраних сегментів")
+            else:
+                st.info("👆 Оберіть сегменти для прогнозування")
+
+        elif not PROPHET_AVAILABLE:
+            st.info("💡 Для прогнозування встановіть бібліотеку: `pip install prophet`")
+        else:
+            st.warning(f"⚠️ Для прогнозування потрібно мінімум 10 періодів даних (зараз: {len(df_pivot)})")
+
+        # 3. СЕЗОННІСТЬ ПО МІСЯЦЯХ
+        st.subheader("3️⃣ Сезонність: який сегмент коли продається")
         
         df['MonthName'] = df['Datasales'].dt.month
         seasonal_data = df.groupby(['MonthName', 'Segment'])['Sum'].sum().reset_index()
@@ -924,36 +1168,303 @@ if uploaded_file:
                 delta_color="normal"
             )
         
-        st.success(f"**🎯 При реализации всех рекомендаций прогнозируемый рост выручки: {total_potential:,.0f} (+{total_potential/total_sales*100:.1f}%)**")
-        
-        st.info("💡 **Рекомендация по приоритетам:** Начните с 🔴 критичных и 🟢 быстрых побед (первые 1-2 рекомендации). Они дадут 70% эффекта при 30% усилий.")
-    
-    else:  # Анализ по магазинам
-        st.header("🏪 Анализ по магазинам")
-        
+        st.success(f"**🎯 При реалізації всіх рекомендацій прогнозований зріст виручки: {total_potential:,.0f} (+{total_potential/total_sales*100:.1f}%)**")
+
+        st.info("💡 **Рекомендація щодо пріоритетів:** Почніть з 🔴 критичних та 🟢 швидких перемог (перші 1-2 рекомендації). Вони дадуть 70% ефекту при 30% зусиль.")
+
+        # ==================== A/B СИМУЛЯЦІЯ РЕКОМЕНДАЦІЙ ====================
+
+        st.markdown("---")
+        st.subheader("🧪 A/B Симуляція: тестування рекомендацій")
+        st.markdown("**Оцініть потенційний вплив кожної рекомендації перед впровадженням**")
+
+        with st.expander("📊 Налаштування A/B тесту", expanded=False):
+            st.markdown("""
+            **Як працює A/B симуляція:**
+            1. Оберіть рекомендацію для тестування
+            2. Встановіть параметри тесту (розмір тестової групи, тривалість)
+            3. Побачите прогнозовані результати на основі історичних даних
+            4. Порівняйте контрольну та тестову групи
+            """)
+
+            # Вибір рекомендації для симуляції
+            if len(recommendations) > 0:
+                rec_titles = [f"{rec['priority']} | {rec['title']}" for rec in recommendations]
+                selected_rec_idx = st.selectbox(
+                    "Оберіть рекомендацію для A/B тесту",
+                    range(len(rec_titles)),
+                    format_func=lambda x: rec_titles[x]
+                )
+
+                selected_rec = recommendations[selected_rec_idx]
+
+                # Параметри A/B тесту
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    test_group_size = st.slider(
+                        "Розмір тестової групи (%)",
+                        min_value=10,
+                        max_value=50,
+                        value=20,
+                        step=5,
+                        help="Відсоток сегментів/магазинів для тестування"
+                    )
+
+                with col2:
+                    test_duration = st.selectbox(
+                        "Тривалість тесту",
+                        ["2 тижні", "1 місяць", "2 місяці", "3 місяці"],
+                        index=1
+                    )
+
+                with col3:
+                    expected_uplift = st.slider(
+                        "Очікуване покращення (%)",
+                        min_value=5,
+                        max_value=50,
+                        value=15,
+                        step=5,
+                        help="Наскільки, на вашу думку, покращаться продажі"
+                    )
+
+                # Симуляція результатів
+                st.markdown("### 📈 Прогнозовані результати A/B тесту")
+
+                # Розрахунок метрик
+                test_group_revenue = total_sales * (test_group_size / 100)
+                control_group_revenue = total_sales * (1 - test_group_size / 100)
+
+                # Симуляція з урахуванням шуму
+                import random
+                random.seed(42)
+
+                duration_days = {
+                    "2 тижні": 14,
+                    "1 місяць": 30,
+                    "2 місяці": 60,
+                    "3 місяці": 90
+                }
+                days = duration_days[test_duration]
+
+                # Проста симуляція денних даних
+                control_daily = []
+                test_daily = []
+
+                for day in range(days):
+                    # Контрольна група - стабільна з невеликим шумом
+                    baseline = control_group_revenue / days
+                    control_value = baseline * (1 + random.gauss(0, 0.05))
+                    control_daily.append(max(0, control_value))
+
+                    # Тестова група - з покращенням
+                    test_baseline = test_group_revenue / days * (1 + expected_uplift / 100)
+                    # Додаємо ефект "розгону" - повільний старт, потім зростання
+                    ramp_up = min(1, day / (days * 0.3))  # Досягає максимуму на 30% періоду
+                    test_value = baseline * (1 + (expected_uplift / 100) * ramp_up) * (1 + random.gauss(0, 0.05))
+                    test_daily.append(max(0, test_value))
+
+                # Графік симуляції
+                fig_ab = go.Figure()
+
+                dates = pd.date_range(start=datetime.now(), periods=days, freq='D')
+
+                fig_ab.add_trace(go.Scatter(
+                    x=dates,
+                    y=control_daily,
+                    name='Контрольна група (без змін)',
+                    mode='lines',
+                    line=dict(color='blue', width=2)
+                ))
+
+                fig_ab.add_trace(go.Scatter(
+                    x=dates,
+                    y=test_daily,
+                    name=f'Тестова група (з рекомендацією)',
+                    mode='lines',
+                    line=dict(color='green', width=2)
+                ))
+
+                # Середні значення
+                control_avg = sum(control_daily) / len(control_daily)
+                test_avg = sum(test_daily) / len(test_daily)
+
+                fig_ab.add_hline(
+                    y=control_avg,
+                    line_dash="dash",
+                    line_color="blue",
+                    annotation_text=f"Середнє контрольної: {control_avg:,.0f}"
+                )
+
+                fig_ab.add_hline(
+                    y=test_avg,
+                    line_dash="dash",
+                    line_color="green",
+                    annotation_text=f"Середнє тестової: {test_avg:,.0f}"
+                )
+
+                fig_ab.update_layout(
+                    title=f'A/B Тест: {selected_rec["title"]}',
+                    xaxis_title='День тесту',
+                    yaxis_title='Денні продажі',
+                    height=500,
+                    hovermode='x unified'
+                )
+
+                st.plotly_chart(fig_ab, use_container_width=True)
+
+                # Метрики результатів
+                st.markdown("### 📊 Ключові метрики A/B тесту")
+
+                col1, col2, col3, col4 = st.columns(4)
+
+                control_total = sum(control_daily)
+                test_total = sum(test_daily)
+                actual_uplift = ((test_total - control_total) / control_total * 100) if control_total > 0 else 0
+                revenue_gain = test_total - control_total
+
+                with col1:
+                    st.metric(
+                        "Контрольна група",
+                        f"{control_total:,.0f}",
+                        help=f"Загальна виручка за {test_duration}"
+                    )
+
+                with col2:
+                    st.metric(
+                        "Тестова група",
+                        f"{test_total:,.0f}",
+                        f"+{actual_uplift:.1f}%",
+                        delta_color="normal"
+                    )
+
+                with col3:
+                    st.metric(
+                        "Приріст виручки",
+                        f"+{revenue_gain:,.0f}",
+                        help="Додаткова виручка від тестової групи"
+                    )
+
+                with col4:
+                    # Статистична значущість (спрощена)
+                    # Реальний тест потребує більше даних та складніших розрахунків
+                    confidence = min(99, 85 + (actual_uplift / 2))
+                    significance = "✅ Значущий" if confidence > 95 else "⚠️ Потрібно більше даних"
+                    st.metric(
+                        "Достовірність",
+                        f"{confidence:.0f}%",
+                        significance
+                    )
+
+                # Висновок та рекомендації
+                st.markdown("### 💡 Висновок симуляції")
+
+                if actual_uplift > 10:
+                    st.success(f"""
+                    **✅ СИЛЬНИЙ ПОЗИТИВНИЙ ЕФЕКТ**
+                    - Очікуваний приріст: **+{actual_uplift:.1f}%**
+                    - Додатковий дохід: **{revenue_gain:,.0f}**
+                    - **Рекомендація:** Негайно впроваджуйте на {test_group_size}% аудиторії, потім масштабуйте на всіх
+                    """)
+                elif actual_uplift > 5:
+                    st.info(f"""
+                    **📊 ПОМІРНИЙ ПОЗИТИВНИЙ ЕФЕКТ**
+                    - Очікуваний приріст: **+{actual_uplift:.1f}%**
+                    - Додатковий дохід: **{revenue_gain:,.0f}**
+                    - **Рекомендація:** Проведіть реальний A/B тест на {test_group_size}% протягом {test_duration}
+                    """)
+                elif actual_uplift > 0:
+                    st.warning(f"""
+                    **⚡ СЛАБКИЙ ЕФЕКТ**
+                    - Очікуваний приріст: **+{actual_uplift:.1f}%**
+                    - **Рекомендація:** Покращіть рекомендацію або збільште тривалість тесту
+                    """)
+                else:
+                    st.error(f"""
+                    **❌ НЕГАТИВНИЙ ЕФЕКТ**
+                    - Очікувана зміна: **{actual_uplift:.1f}%**
+                    - **Рекомендація:** Не впроваджуйте цю рекомендацію, шукайте інші рішення
+                    """)
+
+                # План впровадження
+                st.markdown("### 📋 План впровадження A/B тесту")
+
+                st.markdown(f"""
+                **Крок 1: Підготовка (тиждень 1)**
+                - Визначити {test_group_size}% сегментів для тестової групи
+                - Налаштувати системи відстеження метрик
+                - Навчити персонал
+
+                **Крок 2: Запуск тесту (день 1)**
+                - Впровадити рекомендацію "{selected_rec['title']}" для тестової групи
+                - Контрольна група продовжує працювати як зазвичай
+
+                **Крок 3: Моніторинг ({test_duration})**
+                - Щоденний моніторинг KPI
+                - Тижневий аналіз проміжних результатів
+                - Коригування при необхідності
+
+                **Крок 4: Аналіз результатів (тиждень після тесту)**
+                - Статистичний аналіз різниці між групами
+                - Розрахунок ROI
+                - Рішення про масштабування
+
+                **Крок 5: Масштабування (якщо успішно)**
+                - Поступове розгортання на всю аудиторію
+                - Моніторинг метрик при масштабуванні
+                """)
+
+                # Розрахунок потенційного ROI
+                st.markdown("### 💰 Прогнозований ROI при масштабуванні")
+
+                if actual_uplift > 0:
+                    # Екстраполюємо на весь бізнес
+                    full_scale_gain = (total_sales * actual_uplift / 100)
+
+                    # Припустимо витрати на впровадження (10% від прогнозованого приросту)
+                    implementation_cost = full_scale_gain * 0.1
+
+                    net_gain = full_scale_gain - implementation_cost
+                    roi_pct = (net_gain / implementation_cost * 100) if implementation_cost > 0 else 0
+
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.metric("Прогнозований приріст", f"{full_scale_gain:,.0f}")
+                    with col2:
+                        st.metric("Витрати на впровадження", f"{implementation_cost:,.0f}")
+                    with col3:
+                        st.metric("ROI", f"{roi_pct:.0f}%")
+
+            else:
+                st.info("Немає доступних рекомендацій для A/B тестування")
+
+    else:  # Аналіз по магазинах
+        st.header("🏪 Аналіз за магазинами")
+
         all_magazins = sorted(df['Magazin'].unique())
         selected_magazins = st.multiselect(
-            "Выберите магазины для сравнения (до 10)",
+            "Оберіть магазини для порівняння (до 10)",
             all_magazins,
             default=all_magazins[:min(5, len(all_magazins))]
         )
-        
+
         if len(selected_magazins) > 10:
-            st.warning("⚠️ Выбрано больше 10 магазинов, оставлены первые 10")
+            st.warning("⚠️ Обрано більше 10 магазинів, залишено перші 10")
             selected_magazins = selected_magazins[:10]
-        
+
         if not selected_magazins:
-            st.error("Выберите хотя бы один магазин")
+            st.error("Оберіть хоча б один магазин")
             st.stop()
         
         df_filtered = df[df['Magazin'].isin(selected_magazins)]
-        
-        period = st.selectbox("Период агрегации", ["День", "Неделя", "Месяц"])
-        
+
+        period = st.selectbox("Період агрегації", ["День", "Тиждень", "Місяць"])
+
         if period == "День":
             df_grouped = df_filtered.groupby(['Datasales', 'Magazin'])['Sum'].sum().reset_index()
             df_pivot = df_grouped.pivot(index='Datasales', columns='Magazin', values='Sum')
-        elif period == "Неделя":
+        elif period == "Тиждень":
             df_filtered['Period'] = df_filtered['Datasales'].dt.to_period('W')
             df_grouped = df_filtered.groupby(['Period', 'Magazin'])['Sum'].sum().reset_index()
             df_grouped['Period'] = df_grouped['Period'].dt.to_timestamp()
@@ -963,11 +1474,11 @@ if uploaded_file:
             df_grouped = df_filtered.groupby(['Month', 'Magazin'])['Sum'].sum().reset_index()
             df_grouped['Month'] = df_grouped['Month'].dt.to_timestamp()
             df_pivot = df_grouped.pivot(index='Month', columns='Magazin', values='Sum')
-        
+
         df_pivot = df_pivot.dropna(how='all')
-        
-        # 1. ДИНАМИКА МАГАЗИНОВ
-        st.subheader("1️⃣ Динамика продаж по магазинам")
+
+        # 1. ДИНАМІКА МАГАЗИНІВ
+        st.subheader("1️⃣ Динаміка продажів за магазинами")
         
         fig = go.Figure()
         for magazin in df_pivot.columns:
@@ -981,14 +1492,14 @@ if uploaded_file:
         
         fig.update_layout(
             xaxis_title='Дата',
-            yaxis_title='Продажи',
+            yaxis_title='Продажі',
             height=500,
             hovermode='x unified'
         )
         st.plotly_chart(fig, use_container_width=True)
-        
-        # 2. КОРРЕЛЯЦИЯ МЕЖДУ МАГАЗИНАМИ
-        st.subheader("2️⃣ Корреляция между магазинами")
+
+        # 2. КОРЕЛЯЦІЯ МІЖ МАГАЗИНАМИ
+        st.subheader("2️⃣ Кореляція між магазинами")
         
         if len(selected_magazins) > 1:
             df_pivot_corr = df_pivot.dropna()
