@@ -98,7 +98,7 @@ if uploaded_file:
     # Проверка распределения данных по годам
     df['Year'] = df['Datasales'].dt.year
     data_by_year = df.groupby('Year')['Sum'].agg(['count', 'sum']).reset_index()
-    data_by_year.columns = ['Год', 'Записей', 'Сумма продаж']
+    data_by_year.columns = ['Рік', 'Записів', 'Сума продажів']
     
     st.success(f"✅ Завантажено {len(df):,} записів | Період: {df['Datasales'].min().date()} — {df['Datasales'].max().date()}")
 
@@ -251,11 +251,11 @@ if uploaded_file:
         st.subheader("2️⃣➕ GARCH-аналіз: волатильність та ризики сегментів")
 
         if GARCH_AVAILABLE and len(df_pivot_corr) >= 30:
-            st.markdown("**Модель GARCH показывает, насколько стабильны продажи в каждом сегменте**")
+            st.markdown("**Модель GARCH показує, наскільки стабільні продажі в кожному сегменті**")
 
             garch_results = {}
 
-            for segment in df_pivot.columns[:min(3, len(df_pivot.columns))]:  # Анализируем топ-3 сегмента
+            for segment in df_pivot.columns[:min(3, len(df_pivot.columns))]:  # Аналізуємо топ-3 сегменти
                 try:
                     # Готовим данные: считаем доходность (процентное изменение)
                     segment_data = df_pivot[segment].dropna()
@@ -295,7 +295,7 @@ if uploaded_file:
                     fig_garch = go.Figure()
 
                     for segment, results in garch_results.items():
-                        # Строим условную волатильность
+                        # Будуємо умовну волатильність
                         vol_series = results['volatility']
                         dates = df_pivot[segment].dropna().index[1:len(vol_series)+1]
 
@@ -307,7 +307,7 @@ if uploaded_file:
                         ))
 
                     fig_garch.update_layout(
-                        title='Условная волатильность сегментов (GARCH модель)',
+                        title='Умовна волатильність сегментів (модель GARCH)',
                         xaxis_title='Период',
                         yaxis_title='Волатильность (%)',
                         height=400,
@@ -340,25 +340,25 @@ if uploaded_file:
                     persistence = alpha + beta
                     avg_vol = results['volatility'].mean()
 
-                    # Определяем уровень риска
+                    # Визначаємо рівень ризику
                     if persistence > 0.9:
-                        risk_level = "🔴 Высокий"
-                        risk_text = "Сильные колебания сохраняются долго"
+                        risk_level = "🔴 Високий"
+                        risk_text = "Сильні коливання зберігаються довго"
                     elif persistence > 0.7:
-                        risk_level = "🟡 Средний"
-                        risk_text = "Умеренная стабильность"
+                        risk_level = "🟡 Середній"
+                        risk_text = "Помірна стабільність"
                     else:
-                        risk_level = "🟢 Низкий"
-                        risk_text = "Быстро возвращается к норме"
+                        risk_level = "🟢 Низький"
+                        risk_text = "Швидко повертається до норми"
 
-                    st.write(f"**{segment}**: {risk_level} риск ({risk_text})")
-                    st.write(f"   • Средняя волатильность: {avg_vol:.2f}%")
+                    st.write(f"**{segment}**: {risk_level} ризик ({risk_text})")
+                    st.write(f"   • Середня волатильність: {avg_vol:.2f}%")
                     st.write(f"   • Персистентность (α+β): {persistence:.3f}")
 
                     if alpha > beta:
                         st.write(f"   • ⚡ Реагирует сильно на недавние события")
                     else:
-                        st.write(f"   • 📊 Медленно меняет волатильность")
+                        st.write(f"   • 📊 Повільно змінює волатильність")
 
             else:
                 st.warning("⚠️ Недостаточно данных для GARCH-анализа (нужно минимум 30 наблюдений)")
@@ -589,9 +589,9 @@ if uploaded_file:
                 ))
             
             fig_seasonal.update_layout(
-                title='% продаж сегмента по месяцам (от годовых)',
-                xaxis_title='Месяц',
-                yaxis_title='% от годовых продаж',
+                title='% продажів сегменту по місяцях (від річних)',
+                xaxis_title='Місяць',
+                yaxis_title='% від річних продажів',
                 barmode='group',
                 height=500
             )
@@ -599,7 +599,7 @@ if uploaded_file:
         
         # НОВОЕ: Индекс сезонности
         with st.expander("📈 Индекс сезонности по сегментам"):
-            st.markdown("**Индекс > 100** = месяц сильнее среднего, **< 100** = слабее")
+            st.markdown("**Індекс > 100** = місяць сильніший за середній, **< 100** = слабший")
             seasonal_index = seasonal_pivot_filled.div(seasonal_pivot_filled.mean(axis=0), axis=1) * 100
             seasonal_index = seasonal_index.round(0)
             seasonal_index.index = [month_names[i-1] for i in seasonal_index.index if 1 <= i <= 12]
@@ -633,7 +633,7 @@ if uploaded_file:
             segment_stats = segment_stats.sort_values('Общая сумма', ascending=False)
             
             st.dataframe(segment_stats[['Общая сумма', 'Доля %', 'CV %', 'Единиц']], use_container_width=True)
-            st.caption("CV % = коэффициент вариации (стабильность продаж)")
+            st.caption("CV % = коефіцієнт варіації (стабільність продажів)")
         
         # 5. ЛУЧШИЕ/ХУДШИЕ ПЕРИОДЫ ДЛЯ КАЖДОГО СЕГМЕНТА
         st.subheader("5️⃣ Лучшие и худшие месяцы по сегментам")
@@ -648,11 +648,11 @@ if uploaded_file:
                 best_value = segment_monthly[best_month]
                 worst_value = segment_monthly[worst_month]
                 
-                # Процент от среднего
+                # Відсоток від середнього
                 best_pct = ((best_value / avg_month - 1) * 100) if avg_month > 0 else 0
                 worst_pct = ((worst_value / avg_month - 1) * 100) if avg_month > 0 else 0
                 
-                # Разница между лучшим и худшим
+                # Різниця між найкращим та найгіршим
                 diff_abs = best_value - worst_value
                 diff_pct = ((best_value / worst_value - 1) * 100) if worst_value > 0 else 0
                 
@@ -671,24 +671,24 @@ if uploaded_file:
                     )
                 
                 with col2:
-                    st.success(f"🔥 **Лучший:** {best_month_str}")
+                    st.success(f"🔥 **Найкращий:** {best_month_str}")
                     st.write(f"💰 {best_value:,.0f}")
-                    st.write(f"📈 +{best_pct:,.0f}% от среднего")
+                    st.write(f"📈 +{best_pct:,.0f}% від середнього")
                 
                 with col3:
-                    st.error(f"📉 **Худший:** {worst_month_str}")
+                    st.error(f"📉 **Найгірший:** {worst_month_str}")
                     st.write(f"💰 {worst_value:,.0f}")
-                    st.write(f"📉 {worst_pct:,.0f}% от среднего")
+                    st.write(f"📉 {worst_pct:,.0f}% від середнього")
                 
                 with col4:
-                    st.info(f"**📊 Разброс**")
-                    st.write(f"Разница: {diff_abs:,.0f}")
+                    st.info(f"**📊 Розкид**")
+                    st.write(f"Різниця: {diff_abs:,.0f}")
                     st.write(f"В {diff_pct/100 + 1:.1f}х раз")
                     
                     # Мини-бар для визуализации
                     fig_mini = go.Figure()
                     fig_mini.add_trace(go.Bar(
-                        x=['Худший', 'Средний', 'Лучший'],
+                        x=['Найгірший', 'Середній', 'Найкращий'],
                         y=[worst_value, avg_month, best_value],
                         marker_color=['red', 'gray', 'green'],
                         text=[f'{worst_value:,.0f}', f'{avg_month:,.0f}', f'{best_value:,.0f}'],
@@ -705,7 +705,7 @@ if uploaded_file:
                 st.markdown("---")
         
         # 6. ТРЕНДЫ И РОСТ
-        st.subheader("6️⃣ Тренды: рост/падение сегментов")
+        st.subheader("6️⃣ Тренди: зростання/падіння сегментів")
         
         df_sorted = df.sort_values('Datasales')
         split_point = len(df_sorted) // 3
@@ -728,9 +728,9 @@ if uploaded_file:
                            marker_color=['green' if x > 0 else 'red' for x in growth.values])
                 ])
                 fig_growth.update_layout(
-                    title='Изменение продаж: начало vs конец периода (%)',
+                    title='Зміна продажів: початок vs кінець періоду (%)',
                     xaxis_title='Сегмент',
-                    yaxis_title='Рост/падение %',
+                    yaxis_title='Зростання/падіння %',
                     height=400
                 )
                 st.plotly_chart(fig_growth, use_container_width=True)
@@ -1023,11 +1023,11 @@ if uploaded_file:
                 textfont={"size": 10}
             ))
             
-            fig_corr.update_layout(title='Матрица корреляции магазинов', height=500)
+            fig_corr.update_layout(title='Матриця кореляції магазинів', height=500)
             st.plotly_chart(fig_corr, use_container_width=True)
         
         # 3. СРАВНЕНИЕ МАГАЗИНОВ
-        st.subheader("3️⃣ Сравнительная таблица магазинов")
+        st.subheader("3️⃣ Порівняльна таблиця магазинів")
         
         # ИСПРАВЛЕНИЕ: считаем количество транзакций для среднего чека
         magazin_stats = df_filtered.groupby('Magazin').agg({
@@ -1072,7 +1072,7 @@ if uploaded_file:
                 st.dataframe(segment_df, hide_index=True, use_container_width=True)
         
         # 5. РЕЙТИНГ МАГАЗИНОВ
-        st.subheader("5️⃣ Рейтинг магазинов")
+        st.subheader("5️⃣ Рейтинг магазинів")
         
         col1, col2 = st.columns(2)
         
@@ -1086,8 +1086,8 @@ if uploaded_file:
             top_qty = magazin_stats.nlargest(10, 'Транзакций')[['Транзакций', 'Средний чек']]
             st.dataframe(top_qty, use_container_width=True)
         
-        # НОВОЕ: Эффективность магазинов
-        st.subheader("6️⃣ Эффективность магазинов")
+        # НОВЕ: Ефективність магазинів
+        st.subheader("6️⃣ Ефективність магазинів")
         
         # Scatter plot: транзакции vs средний чек
         fig_efficiency = px.scatter(
@@ -1135,7 +1135,7 @@ if uploaded_file:
         
         # ==================== ЭКСПРЕСС-ДИАГНОСТИКА ====================
         
-        st.subheader("📊 Экспресс-диагностика сети магазинов")
+        st.subheader("📊 Експрес-діагностика мережі магазинів")
         
         col1, col2, col3, col4 = st.columns(4)
         
@@ -1282,7 +1282,7 @@ if uploaded_file:
             recommendations_mag.append({
                 'priority': '🟡 СТРАТЕГИЯ',
                 'title': f'Тиражировать опыт лучших магазинов',
-                'problem': f'{best_store} показывает чек {best_check:,.0f} (на {check_gap:.0f}% выше среднего)',
+                'problem': f'{best_store} показує чек {best_check:,.0f} (на {check_gap:.0f}% вище середнього)',
                 'why': f'Если поднять все магазины до 80% от лучшего: потенциал {replication_potential:,.0f}',
                 'action': [
                     f'1. Бенчмаркинг: выявить "секреты" {best_store}',
