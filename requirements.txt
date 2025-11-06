@@ -4,4 +4,5 @@ numpy
 plotly
 scipy
 openpyxl
+arch
 
