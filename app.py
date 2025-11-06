@@ -1078,12 +1078,12 @@ if uploaded_file:
         
         with col1:
             st.write("**🏆 Топ по продажам**")
-            top_magazins = magazin_stats.nlargest(10, 'Общая сумма')[['Общая сумма', 'Средний чек']]
+            top_magazins = magazin_stats.nlargest(10, 'Загальна сума')[['Загальна сума', 'Середній чек']]
             st.dataframe(top_magazins, use_container_width=True)
         
         with col2:
             st.write("**📊 Топ по количеству транзакций**")
-            top_qty = magazin_stats.nlargest(10, 'Транзакций')[['Транзакций', 'Средний чек']]
+            top_qty = magazin_stats.nlargest(10, 'Транзакцій')[['Транзакцій', 'Середній чек']]
             st.dataframe(top_qty, use_container_width=True)
         
         # НОВЕ: Ефективність магазинів
@@ -1092,12 +1092,12 @@ if uploaded_file:
         # Scatter plot: транзакции vs средний чек
         fig_efficiency = px.scatter(
             magazin_stats.reset_index(),
-            x='Транзакций',
-            y='Средний чек',
-            size='Общая сумма',
+            x='Транзакцій',
+            y='Середній чек',
+            size='Загальна сума',
             hover_name='Magazin',
             title='Эффективность: Объем vs Средний чек',
-            labels={'Транзакций': 'Количество транзакций', 'Средний чек': 'Средний чек'},
+            labels={'Транзакцій': 'Кількість транзакцій', 'Середній чек': 'Середній чек'},
             height=500
         )
         fig_efficiency.update_traces(marker=dict(sizemode='diameter'))
@@ -1113,23 +1113,23 @@ if uploaded_file:
         
         # Базовые метрики
         total_magazins = len(magazin_stats)
-        total_sales_mag = magazin_stats['Общая сумма'].sum()
-        avg_check_overall = magazin_stats['Средний чек'].mean()
-        avg_transactions = magazin_stats['Транзакций'].mean()
+        total_sales_mag = magazin_stats['Загальна сума'].sum()
+        avg_check_overall = magazin_stats['Середній чек'].mean()
+        avg_transactions = magazin_stats['Транзакцій'].mean()
         
         # Топ и аутсайдеры
         top_magazin = magazin_stats.index[0]
-        top_magazin_sales = magazin_stats.iloc[0]['Общая сумма']
+        top_magazin_sales = magazin_stats.iloc[0]['Загальна сума']
         top_magazin_share = (top_magazin_sales / total_sales_mag * 100)
         
-        bottom_magazins = magazin_stats.nsmallest(max(3, int(total_magazins * 0.2)), 'Общая сумма')
+        bottom_magazins = magazin_stats.nsmallest(max(3, int(total_magazins * 0.2)), 'Загальна сума')
         
         # Анализ среднего чека
-        high_check_stores = magazin_stats[magazin_stats['Средний чек'] > avg_check_overall * 1.2].sort_values('Средний чек', ascending=False)
-        low_check_stores = magazin_stats[magazin_stats['Средний чек'] < avg_check_overall * 0.8].sort_values('Средний чек')
+        high_check_stores = magazin_stats[magazin_stats['Середній чек'] > avg_check_overall * 1.2].sort_values('Середній чек', ascending=False)
+        low_check_stores = magazin_stats[magazin_stats['Середній чек'] < avg_check_overall * 0.8].sort_values('Середній чек')
         
         # Анализ эффективности (продажи на транзакцию)
-        magazin_stats['Эффективность'] = magazin_stats['Общая сумма'] / magazin_stats['Транзакций']
+        magazin_stats['Ефективність'] = magazin_stats['Загальна сума'] / magazin_stats['Транзакцій']
         high_efficiency = magazin_stats.nlargest(5, 'Эффективность')
         low_efficiency = magazin_stats.nsmallest(5, 'Эффективность')
         
@@ -1140,14 +1140,14 @@ if uploaded_file:
         col1, col2, col3, col4 = st.columns(4)
         
         # Разброс по среднему чеку
-        check_variance = (magazin_stats['Средний чек'].std() / avg_check_overall * 100)
+        check_variance = (magazin_stats['Середній чек'].std() / avg_check_overall * 100)
         check_status = "🟢 Однородная сеть" if check_variance < 20 else ("🟡 Есть разброс" if check_variance < 40 else "🔴 Сильный разброс")
         with col1:
             st.metric("Разброс чека", f"{check_variance:.0f}%", check_status)
             st.caption("CV среднего чека")
         
         # Концентрация
-        top_3_share = (magazin_stats.nlargest(3, 'Общая сумма')['Общая сумма'].sum() / total_sales_mag * 100)
+        top_3_share = (magazin_stats.nlargest(3, 'Загальна сума')['Загальна сума'].sum() / total_sales_mag * 100)
         conc_status = "🟢 Распределено" if top_3_share < 40 else ("🟡 Умеренно" if top_3_share < 60 else "🔴 Концентрация")
         with col2:
             st.metric("Топ-3 магазина", f"{top_3_share:.0f}%", conc_status)
@@ -1162,7 +1162,7 @@ if uploaded_file:
         
         # Средний чек vs топ
         if len(high_check_stores) > 0:
-            best_check = high_check_stores.iloc[0]['Средний чек']
+            best_check = high_check_stores.iloc[0]['Середній чек']
             check_gap = ((best_check / avg_check_overall - 1) * 100)
             gap_status = "🟢 Малый" if check_gap < 30 else ("🟡 Средний" if check_gap < 50 else "🔴 Большой")
         else:
@@ -1184,13 +1184,13 @@ if uploaded_file:
             
             st.write(f"**1. Лидер продаж: {top_magazin}**")
             st.write(f"   💰 Продажи: {top_magazin_sales:,.0f} ({top_magazin_share:.1f}%)")
-            st.write(f"   💳 Средний чек: {magazin_stats.loc[top_magazin, 'Средний чек']:,.0f}")
-            st.write(f"   🛒 Транзакций: {magazin_stats.loc[top_magazin, 'Транзакций']:,.0f}")
+            st.write(f"   💳 Середній чек: {magazin_stats.loc[top_magazin, 'Середній чек']:,.0f}")
+            st.write(f"   🛒 Транзакцій: {magazin_stats.loc[top_magazin, 'Транзакцій']:,.0f}")
             
             if len(high_check_stores) > 0:
                 st.write(f"\n**2. Высокий средний чек** ({len(high_check_stores)} магазинов):")
                 for i, store in enumerate(high_check_stores.head(3).index, 1):
-                    check = high_check_stores.loc[store, 'Средний чек']
+                    check = high_check_stores.loc[store, 'Середній чек']
                     vs_avg = ((check / avg_check_overall - 1) * 100)
                     st.write(f"   {i}. **{store}**: {check:,.0f} (+{vs_avg:.0f}% к среднему)")
             
@@ -1205,14 +1205,14 @@ if uploaded_file:
             
             if len(low_check_stores) > 0:
                 total_low_check_loss = sum([
-                    (avg_check_overall - row['Средний чек']) * row['Транзакций']
+                    (avg_check_overall - row['Середній чек']) * row['Транзакцій']
                     for idx, row in low_check_stores.iterrows()
                 ])
                 
                 st.write(f"**1. Низкий средний чек** ({len(low_check_stores)} магазинов):")
                 for i, store in enumerate(low_check_stores.head(3).index, 1):
-                    check = low_check_stores.loc[store, 'Средний чек']
-                    transactions = low_check_stores.loc[store, 'Транзакций']
+                    check = low_check_stores.loc[store, 'Середній чек']
+                    transactions = low_check_stores.loc[store, 'Транзакцій']
                     loss = (avg_check_overall - check) * transactions
                     st.write(f"   {i}. **{store}**: {check:,.0f} (💸 потеря ~{loss:,.0f})")
                 st.write(f"   ⚡ Общая потенциальная потеря: **{total_low_check_loss:,.0f}**")
@@ -1240,13 +1240,13 @@ if uploaded_file:
         # ПРИОРИТЕТ 1: Поднять средний чек в слабых магазинах
         if len(low_check_stores) > 0:
             total_low_check_potential = sum([
-                (avg_check_overall - row['Средний чек']) * row['Транзакций'] * 0.5  # 50% от разрыва
+                (avg_check_overall - row['Середній чек']) * row['Транзакцій'] * 0.5  # 50% від розриву
                 for idx, row in low_check_stores.iterrows()
             ])
             
             worst_store = low_check_stores.index[0]
-            worst_check = low_check_stores.iloc[0]['Средний чек']
-            worst_transactions = low_check_stores.iloc[0]['Транзакций']
+            worst_check = low_check_stores.iloc[0]['Середній чек']
+            worst_transactions = low_check_stores.iloc[0]['Транзакцій']
             
             recommendations_mag.append({
                 'priority': '🟢 БЫСТРАЯ ПОБЕДА',
@@ -1269,14 +1269,14 @@ if uploaded_file:
         # ПРИОРИТЕТ 2: Тиражирование лучших практик
         if len(high_check_stores) > 0:
             best_store = high_check_stores.index[0]
-            best_check = high_check_stores.iloc[0]['Средний чек']
+            best_check = high_check_stores.iloc[0]['Середній чек']
             
             # Потенциал если все магазины достигнут 80% от лучшего
             target_check = best_check * 0.8
             replication_potential = sum([
-                max(0, target_check - row['Средний чек']) * row['Транзакций']
+                max(0, target_check - row['Середній чек']) * row['Транзакцій']
                 for idx, row in magazin_stats.iterrows()
-                if row['Средний чек'] < target_check
+                if row['Середній чек'] < target_check
             ])
             
             recommendations_mag.append({
@@ -1299,13 +1299,13 @@ if uploaded_file:
         
         # ПРИОРИТЕТ 3: Аудит и оптимизация слабых точек
         if len(bottom_magazins) > 0:
-            bottom_total_sales = bottom_magazins['Общая сумма'].sum()
+            bottom_total_sales = bottom_magazins['Загальна сума'].sum()
             bottom_share = (bottom_total_sales / total_sales_mag * 100)
-            avg_magazin_sales = magazin_stats['Общая сумма'].mean()
+            avg_magazin_sales = magazin_stats['Загальна сума'].mean()
             
             # Потенциал если слабые магазины достигнут 70% от среднего
             bottom_potential = sum([
-                max(0, avg_magazin_sales * 0.7 - row['Общая сумма'])
+                max(0, avg_magazin_sales * 0.7 - row['Загальна сума'])
                 for idx, row in bottom_magazins.iterrows()
             ])
             
@@ -1345,7 +1345,7 @@ if uploaded_file:
         
         if len(specialized_stores) > 0:
             specialization_potential = sum([
-                magazin_stats.loc[s['store'], 'Общая сумма'] * 0.15  # 15% рост за счет углубления специализации
+                magazin_stats.loc[s['store'], 'Загальна сума'] * 0.15  # 15% зростання за рахунок поглиблення спеціалізації
                 for s in specialized_stores
                 if s['store'] in magazin_stats.index
             ])
