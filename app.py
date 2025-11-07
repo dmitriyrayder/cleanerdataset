@@ -73,11 +73,47 @@ st.markdown("""
 
 st.title("📊 Аналіз продажів: Сегменти та Магазини")
 
-# Завантаження файлу
-uploaded_file = st.file_uploader("Завантажте Excel файл з продажами", type=['xlsx', 'xls'])
+# Вибір джерела даних
+st.subheader("📥 Джерело даних")
+data_source = st.radio(
+    "Оберіть джерело даних:",
+    ["Google Sheets", "Локальний Excel файл"],
+    index=0,  # За замовчуванням Google Sheets
+    horizontal=True
+)
 
-if uploaded_file:
-    df = pd.read_excel(uploaded_file)
+# Завантаження даних
+df = None
+
+if data_source == "Google Sheets":
+    st.info("📊 Завантаження даних з Google Sheets...")
+
+    # URL Google Sheets
+    sheet_url = "https://docs.google.com/spreadsheets/d/1lJLON5N_EKQ5ICv0Pprp5DamP1tNAhBIph4uEoWC04Q/edit?gid=64159818#gid=64159818"
+
+    try:
+        # Конвертуємо URL в формат експорту CSV
+        sheet_id = "1lJLON5N_EKQ5ICv0Pprp5DamP1tNAhBIph4uEoWC04Q"
+        gid = "64159818"
+        export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+
+        # Завантажуємо дані
+        df = pd.read_csv(export_url)
+        st.success(f"✅ Успішно завантажено {len(df)} записів з Google Sheets")
+
+    except Exception as e:
+        st.error(f"❌ Помилка завантаження з Google Sheets: {str(e)}")
+        st.info("💡 Переконайтеся, що таблиця має публічний доступ (Доступ → Усі, хто має посилання → Переглядач)")
+        st.stop()
+
+else:  # Локальний Excel файл
+    uploaded_file = st.file_uploader("Завантажте Excel файл з продажами", type=['xlsx', 'xls'])
+
+    if uploaded_file:
+        df = pd.read_excel(uploaded_file)
+        st.success(f"✅ Успішно завантажено файл")
+
+if df is not None:
     df['Datasales'] = pd.to_datetime(df['Datasales'], errors='coerce')
     
     # ВИПРАВЛЕННЯ: більш сувора валідація даних
