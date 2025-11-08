@@ -86,12 +86,6 @@ data_source = st.radio(
 df = None
 
 if data_source == "Google Sheets":
-    st.info("📊 Завантаження даних з Google Sheets...")
-
-    # URL Google Sheets
-    sheet_url = "https://docs.google.com/spreadsheets/d/1lJLON5N_EKQ5ICv0Pprp5DamP1tNAhBIph4uEoWC04Q/edit?gid=64159818#gid=64159818"
-
-   if data_source == "Google Sheets":
     st.info("📊 Введіть посилання на Google Sheets")
     
     # Input для URL
