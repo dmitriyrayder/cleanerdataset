@@ -114,9 +114,12 @@ else:  # Локальний Excel файл
         st.success(f"✅ Успішно завантажено файл")
 
 if df is not None:
+    # Приводимо до правильних типів ПЕРЕД валідацією
     df['Datasales'] = pd.to_datetime(df['Datasales'], errors='coerce')
+    df['Sum'] = pd.to_numeric(df['Sum'], errors='coerce')
+    df['Qty'] = pd.to_numeric(df['Qty'], errors='coerce')
     
-    # ВИПРАВЛЕННЯ: більш сувора валідація даних
+    # Валідація даних
     initial_rows = len(df)
     df = df.dropna(subset=['Datasales', 'Sum', 'Segment', 'Magazin'])
     df = df[df['Sum'] > 0]
