@@ -91,19 +91,40 @@ if data_source == "Google Sheets":
     # URL Google Sheets
     sheet_url = "https://docs.google.com/spreadsheets/d/1lJLON5N_EKQ5ICv0Pprp5DamP1tNAhBIph4uEoWC04Q/edit?gid=64159818#gid=64159818"
 
-    try:
-        # Конвертуємо URL в формат експорту CSV
-        sheet_id = "1lJLON5N_EKQ5ICv0Pprp5DamP1tNAhBIph4uEoWC04Q"
-        gid = "64159818"
-        export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
-
-        # Завантажуємо дані
-        df = pd.read_csv(export_url)
-        st.success(f"✅ Успішно завантажено {len(df)} записів з Google Sheets")
-
-    except Exception as e:
-        st.error(f"❌ Помилка завантаження з Google Sheets: {str(e)}")
-        st.info("💡 Переконайтеся, що таблиця має публічний доступ (Доступ → Усі, хто має посилання → Переглядач)")
+   if data_source == "Google Sheets":
+    st.info("📊 Введіть посилання на Google Sheets")
+    
+    # Input для URL
+    sheet_url_input = st.text_input(
+        "Посилання на таблицю:",
+        placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=...",
+        help="Таблиця повинна мати публічний доступ"
+    )
+    
+    if sheet_url_input:
+        try:
+            import re
+            
+            # Витягуємо sheet_id та gid
+            sheet_id_match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url_input)
+            if not sheet_id_match:
+                st.error("❌ Невірний формат посилання")
+                st.stop()
+            
+            sheet_id = sheet_id_match.group(1)
+            gid_match = re.search(r'[#&]gid=([0-9]+)', sheet_url_input)
+            gid = gid_match.group(1) if gid_match else '0'
+            
+            export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+            
+            df = pd.read_csv(export_url)
+            st.success(f"✅ Завантажено {len(df)} записів")
+            
+        except Exception as e:
+            st.error(f"❌ Помилка: {str(e)}")
+            st.stop()
+    else:
+        st.warning("👆 Вставте посилання для початку")
         st.stop()
 
 else:  # Локальний Excel файл
